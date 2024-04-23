@@ -121,7 +121,7 @@ def main():
     num_generations = st.slider('Number of generations', 1, 1000, 10)
     scenario = st.selectbox('Scenario', ['global_warming', 'None'])
     if scenario == 'global_warming':
-        global_warming_scale = st.slider('Global warming scale', 0.0, 1.0, 0.01)
+        global_warming_scale = st.slider('Global warming scale', 0.0, 1.0, 1.0)
         global_warming_var = st.slider('Global warming var', 0.0, 1.0, 0.1)
     else:
         global_warming_scale = None

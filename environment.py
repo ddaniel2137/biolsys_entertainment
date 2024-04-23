@@ -10,7 +10,8 @@ class Environment():
     
     def __init__(self, init_populations: List[int], num_genes: List[int], optimal_genotypes: List[np.ndarray],
                  fitness_coefficients: List[float], max_populations: List[int], mutation_probabilities: List[float],
-                 mutation_effects: List[float], max_num_children: List[int], interaction_values: List[float], scenario: str, meteor_impact_strategy: str,
+                 mutation_effects: List[float], max_num_children: List[int], interaction_values: List[float], scenario: str,
+                 meteor_impact_strategy: str,
                  num_generations: int, **kwargs):
 
         self.populations = [Population(init_populations[i], num_genes[i], optimal_genotypes[i], fitness_coefficients[i],
@@ -25,7 +26,7 @@ class Environment():
                 self.global_warming_var = kwargs.get("global_warming_var", 0.1)
                 self._execute_scenario = partial(
                     self._change_optimal_genotypes, self.global_warming_scale,
-                    self.global_warming_var, when=range(0, num_generations)
+                    self.global_warming_var, when=range(0, num_generations), distribution=np.random.uniform
                 )
             case _:
                 self._execute_scenario = lambda current: None
@@ -34,12 +35,14 @@ class Environment():
                 self.meteor_impact_every = kwargs.get("meteor_impact_every", 20)
                 self._execute_meteor = partial(
                     self._change_optimal_genotypes, 2, 0.2,
-                    when=range(0, num_generations, self.meteor_impact_every)
+                    when=range(0, num_generations, self.meteor_impact_every),
+                    distribution=np.random.normal
                 )
             case "at":
                 self.meteor_impact_at = kwargs.get("meteor_impact_at", [20, 40])
                 self._execute_meteor = partial(
-                    self._change_optimal_genotypes, 2, 0.2, when=self.meteor_impact_at
+                    self._change_optimal_genotypes, 2, 0.2, when=self.meteor_impact_at,
+                    distribution=np.random.normal
                 )
             case _:
                 self._execute_meteor = lambda current: None
@@ -94,15 +97,14 @@ class Environment():
                  'optimal_genotype': {'prey': self.populations[0].optimal_genotype, 'predator': self.populations[1].optimal_genotype}}
         return stats
     
-    def _change_optimal_genotypes(self, scale: float, var: float, current: int = -1, when: List[int] = None):
+    def _change_optimal_genotypes(
+          self, scale: float, var: float, current: int = -1, when: List[int] = None,
+          distribution: Callable = np.random.normal, **kwargs):
         if when is None:
             return
         else:
             if current in when:
                 for p in self.populations:
-                    p.optimal_genotype += scale * np.random.normal(0, var, p.num_genes)
+                    p.optimal_genotype += scale * distribution(0, var, p.num_genes)
                     p.optimal_genotype = np.clip(p.optimal_genotype, -1, 1)
-            
-                
-            
-                
+                       
