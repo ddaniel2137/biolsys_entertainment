@@ -4,6 +4,7 @@ from population import Population
 import math
 from icecream import ic
 from functools import partial
+import copy
 
 
 class Environment():
@@ -88,12 +89,13 @@ class Environment():
             yield progress, stats_stacked
         
     def log_stats(self):
-        stats = {'mean_fitness': {'prey': self.populations[0].mean_fitness, 'predator': self.populations[1].mean_fitness},
-                 'size': {'prey': self.populations[0].size, 'predator': self.populations[1].size},
-                 'generation': {'prey': self.populations[0].generation, 'predator': self.populations[1].generation},
-                 'genotypes': {'prey': self.populations[0].genotypes, 'predator': self.populations[1].genotypes},
-                 'fitnesses': {'prey': self.populations[0].fitnesses, 'predator': self.populations[1].fitnesses},
-                 'optimal_genotype': {'prey': self.populations[0].optimal_genotype, 'predator': self.populations[1].optimal_genotype}}
+        populations_copy = copy.deepcopy(self.populations)
+        stats = {'mean_fitness': {'prey': populations_copy[0].mean_fitness, 'predator': populations_copy[1].mean_fitness},
+                 'size': {'prey': populations_copy[0].size, 'predator': populations_copy[1].size},
+                 'generation': {'prey': populations_copy[0].generation, 'predator': populations_copy[1].generation},
+                 'genotypes': {'prey': populations_copy[0].genotypes, 'predator': populations_copy[1].genotypes},
+                 'fitnesses': {'prey': populations_copy[0].fitnesses, 'predator': populations_copy[1].fitnesses},
+                 'optimal_genotype': {'prey': populations_copy[0].optimal_genotype, 'predator': populations_copy[1].optimal_genotype}}
         return stats
     
     def _change_optimal_genotypes(
