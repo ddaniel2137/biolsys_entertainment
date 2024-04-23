@@ -34,14 +34,14 @@ class Environment():
             case "every":
                 self.meteor_impact_every = kwargs.get("meteor_impact_every", 20)
                 self._execute_meteor = partial(
-                    self._change_optimal_genotypes, 2, 0.2,
+                    self._change_optimal_genotypes, 1, 0.2,
                     when=range(0, num_generations, self.meteor_impact_every),
                     distribution=np.random.normal
                 )
             case "at":
                 self.meteor_impact_at = kwargs.get("meteor_impact_at", [20, 40])
                 self._execute_meteor = partial(
-                    self._change_optimal_genotypes, 2, 0.2, when=self.meteor_impact_at,
+                    self._change_optimal_genotypes, 1, 0.2, when=self.meteor_impact_at,
                     distribution=np.random.normal
                 )
             case _:
@@ -50,10 +50,9 @@ class Environment():
             
         
     def evaluate(self):
-        mean_fitnesses = [p.mean_fitness for i, p in enumerate(self.populations)]
-        for i, _ in enumerate(self.populations):
-            other_mean_fitness = np.sign(2*i-1) * mean_fitnesses[-1 - i]
-            self.populations[i].fitnesses, self.populations[i].mean_fitness = self.populations[i].evaluate(other_mean_fitness)
+        other_mean_fitnesses = [p.mean_fitness for p in self.populations[-1::-1]]
+        for i, p in enumerate(self.populations):
+            p.fitnesses, p.mean_fitness = p.evaluate(other_mean_fitnesses[i])
         
     def mutate(self):
         for i, _ in enumerate(self.populations):
@@ -79,11 +78,11 @@ class Environment():
             for key in stats_stacked.keys():
                 for subkey in stats_stacked[key].keys():
                     stats_stacked[key][subkey].append(stats[key][subkey])
-            self._execute_scenario(current=i)
-            self._execute_meteor(current=i)
             self.mutate()
             self.reproduce()
             self.evaluate()
+            self._execute_scenario(current=i)
+            self._execute_meteor(current=i)
             
             progress = (i + 1) / num_generations
             yield progress, stats_stacked

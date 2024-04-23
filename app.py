@@ -14,7 +14,9 @@ def prepare_pca_data(population_genotypes, optimal_genotype):
     try:
         pca = PCA(n_components=2)
         pca_population = pca.fit_transform(population_genotypes)
+        ic(optimal_genotype.reshape(1, -1))
         pca_optimal = pca.transform(optimal_genotype.reshape(1, -1))
+        ic(pca_optimal)
         return pca_population, pca_optimal[0]
     except Exception:
         return None, None
@@ -26,8 +28,10 @@ def create_frames(stats_stacked, role):
     for gen in range(len(stats_stacked['generation'][role])):
         genotypes = np.array(stats_stacked['genotypes'][role][gen])
         optimal_genotype = np.array(stats_stacked['optimal_genotype'][role][gen])
+        ic(genotypes, optimal_genotype)
         # Assuming PCA transformation function
         pca_population, pca_optimal = prepare_pca_data(genotypes, optimal_genotype)
+        ic(pca_population, pca_optimal)
         if pca_population is None:
             break
         else:
@@ -117,8 +121,8 @@ def main():
     mutation_probabilities = [st.slider(f'Mutation probability {i}', 0.0, 1.0, 0.5) for i in range(num_populations)]
     mutation_effects = [st.slider(f'Mutation effect {i}', 0.0, 1.0, 0.1) for i in range(num_populations)]
     max_num_children = [st.slider(f'Max children {i}', 1, 5, 2) for i in range(num_populations)]
-    interaction_values = [st.slider(f'Interaction value {i}', 0.0, 1.0, 0.1) for i in range(num_populations)]
-    num_generations = st.slider('Number of generations', 1, 1000, 10)
+    interaction_values = [st.slider(f'Interaction value {i}', i-1.0, float(i), 0.0) for i in range(num_populations)]
+    num_generations = st.slider('Number of generations', 1, 1000, 100)
     scenario = st.selectbox('Scenario', ['global_warming', 'None'])
     if scenario == 'global_warming':
         global_warming_scale = st.slider('Global warming scale', 0.0, 1.0, 1.0)

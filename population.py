@@ -27,7 +27,7 @@ class Population:
     
     def evaluate(self, mean_fitness_other: float):
         distances = np.linalg.norm(self.genotypes - self.optimal_genotype, axis=1)
-        fitnesses = np.exp(-distances / (2 * self.fitness_coefficient ** 2)) + self.interaction_value * mean_fitness_other / self.size
+        fitnesses = np.exp(-distances / (2 * self.fitness_coefficient ** 2)) + self.interaction_value * mean_fitness_other / max(self.size, 1)
         mean_fitness = np.mean(fitnesses)
         return fitnesses, mean_fitness
     
