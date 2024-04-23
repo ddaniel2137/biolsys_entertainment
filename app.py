@@ -10,12 +10,11 @@ from plotly.graph_objs import Figure, Layout, Frame, Scatter
 
 
 # Helper function to perform PCA and format the data
-def prepare_pca_data(population_genotypes, optimal_genotype):
+def prepare_pca_data(population_genotypes, optimal_genotype, pca):
     try:
-        pca = PCA(n_components=2)
-        pca_population = pca.fit_transform(population_genotypes)
+        pca_population = pca.transform(population_genotypes)
         #ic(optimal_genotype.reshape(1, -1))
-        pca_optimal = optimal_genotype[:2].reshape(1, -1)
+        pca_optimal = pca.transform(optimal_genotype.reshape(1, -1))
         #ic(pca_optimal)
         return pca_population, pca_optimal[0]
     except Exception:
@@ -25,12 +24,14 @@ def prepare_pca_data(population_genotypes, optimal_genotype):
 # Helper function to create frames for the animation
 def create_frames(stats_stacked, role):
     frames = []
+    pca = PCA(n_components=2)
+    pca.fit(stats_stacked['genotypes'][role][0])
     for gen in range(len(stats_stacked['generation'][role])):
         genotypes = np.array(stats_stacked['genotypes'][role][gen])
         optimal_genotype = np.array(stats_stacked['optimal_genotype'][role][gen])
         #ic(genotypes, optimal_genotype)
         # Assuming PCA transformation function
-        pca_population, pca_optimal = prepare_pca_data(genotypes, optimal_genotype)
+        pca_population, pca_optimal = prepare_pca_data(genotypes, optimal_genotype, pca)
         #ic(pca_population, pca_optimal)
         if pca_population is None:
             break
