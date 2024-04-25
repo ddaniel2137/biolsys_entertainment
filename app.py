@@ -8,49 +8,50 @@ from sklearn.decomposition import PCA
 import plotly.graph_objs as go
 from plotly.graph_objs import Figure, Layout, Frame, Scatter
 
-
-# Helper function to perform PCA and format the data
-def prepare_pca_data(population_genotypes, optimal_genotype, pca):
-    try:
-        pca_population = pca.transform(population_genotypes)
-        #ic(optimal_genotype.reshape(1, -1))
-        pca_optimal = pca.transform(optimal_genotype.reshape(1, -1))
-        #ic(pca_optimal)
-        return pca_population, pca_optimal[0]
-    except Exception:
-        return None, None
-
-
 # Helper function to create frames for the animation
 def create_frames(stats_stacked, role):
     frames = []
+    all_genotypes = np.vstack([g for g in stats_stacked['genotypes'][role] if g.size > 0])
+    all_optimal_genotypes = np.vstack(stats_stacked['optimal_genotype'][role])
+
     pca = PCA(n_components=2)
-    ic(np.vstack((stats_stacked['genotypes'][role][0], stats_stacked['optimal_genotype'][role][0])))
-    pca.fit(np.vstack((stats_stacked['genotypes'][role][0], stats_stacked['optimal_genotype'][role][0])))
+    pca.fit(np.vstack((all_genotypes, all_optimal_genotypes)))
+
     for gen in range(len(stats_stacked['generation'][role])):
         genotypes = np.array(stats_stacked['genotypes'][role][gen])
         optimal_genotype = np.array(stats_stacked['optimal_genotype'][role][gen])
-        #ic(genotypes, optimal_genotype)
-        # Assuming PCA transformation function
-        pca_population, pca_optimal = prepare_pca_data(genotypes, optimal_genotype, pca)
-        #ic(pca_population, pca_optimal)
-        if pca_population is None:
-            break
+        pca_optimal = pca.transform(optimal_genotype.reshape(1, -1))
+
+        ic(genotypes.size, optimal_genotype)
+        if genotypes.size > 0:
+            pca_population = pca.transform(genotypes)
+            frame_data = [
+                Scatter(x=pca_population[:, 0], y=pca_population[:, 1], mode='markers', name='Population',
+                        marker={'color': 'blue'}),
+                Scatter(x=[pca_optimal[0, 0]], y=[pca_optimal[0, 1]], mode='markers', name='Optimal',
+                        marker={'color': 'red', 'size': 12})
+            ]
         else:
-            frame = Frame(
-                data=[
-                    Scatter(x=pca_population[:, 0], y=pca_population[:, 1], mode='markers', name='Population',
-                            marker={'color': 'blue'}),
-                    Scatter(x=[pca_optimal[0]], y=[pca_optimal[1]], mode='markers', name='Optimal',
-                            marker={'color': 'red', 'size': 12})
-                ],
-                layout=Layout(title=f"{role.capitalize()} population genotypes evolution", annotations=[{
-                    'text': f"Generation {gen}", 'showarrow': False, 'xref': 'paper', 'yref': 'paper', 'x': 0.5, 'y': 0.95,
-                    'xanchor': 'center', 'yanchor': 'bottom', 'font': {'size': 16}
-                }])
-            )
+            # Differentiate the plotting for optimal only scenario
+            frame_data = [
+                Scatter(x=[pca_optimal[0, 0]], y=[pca_optimal[0, 1]], mode='markers', name='Optimal (only)',
+                        marker={'color': 'orange', 'size': 12, 'symbol': 'star'})
+            ]
+
+        frame = Frame(
+            data=frame_data,
+            layout=Layout(title=f"{role.capitalize()} population genotypes evolution", annotations=[{
+                'text': f"Generation {gen} (optimal only)", 'showarrow': False, 'xref': 'paper', 'yref': 'paper', 'x': 0.5, 'y': 0.95,
+                'xanchor': 'center', 'yanchor': 'bottom', 'font': {'size': 16}
+            }] if genotypes.size == 0 else [{
+                'text': f"Generation {gen}", 'showarrow': False, 'xref': 'paper', 'yref': 'paper', 'x': 0.5, 'y': 0.95,
+                'xanchor': 'center', 'yanchor': 'bottom', 'font': {'size': 16}
+            }])
+        )
         frames.append(frame)
+
     return frames
+
 
 
 def pad_sizes(sizes: List[np.ndarray], max_size: int) -> List[np.ndarray]:
@@ -76,6 +77,14 @@ def build_figure(frames, role, animation_speed):
         fig = Figure(
             data=initial_frame.data,
             layout=Layout(
+                autosize=True,
+                margin=dict(
+                    l=50,  # left margin
+                    r=50,  # right margin
+                    b=100,  # bottom margin
+                    t=50,  # top margin
+                    pad=10
+                ),
                 xaxis=dict(range=[-1, 1], autorange=False, zeroline=True, showgrid=False),
                 yaxis=dict(range=[-1, 1], autorange=False, zeroline=True, showgrid=False),
                 title=f"{role.capitalize()} Population Genotypes Evolution",
@@ -101,7 +110,7 @@ def build_figure(frames, role, animation_speed):
                         }
                     ],
                     'direction': 'left',
-                    'x': 0.1,
+                    'x': 0,
                     'xanchor': 'right',
                     'y': 0,
                     'yanchor': 'top'

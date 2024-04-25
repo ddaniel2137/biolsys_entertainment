@@ -48,8 +48,7 @@ class Environment():
             case _:
                 self._execute_meteor = lambda current: None
                 
-            
-        
+             
     def evaluate(self):
         other_mean_fitnesses = [p.mean_fitness for p in self.populations[-1::-1]]
         for i, p in enumerate(self.populations):
