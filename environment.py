@@ -106,6 +106,7 @@ class Environment():
         else:
             if current in when:
                 for p in self.populations:
+                    #ic(distribution(0, var, p.num_genes))
                     p.optimal_genotype += scale * distribution(0, var, p.num_genes)
                     p.optimal_genotype = np.clip(p.optimal_genotype, -1, 1)
                        

@@ -25,7 +25,8 @@ def prepare_pca_data(population_genotypes, optimal_genotype, pca):
 def create_frames(stats_stacked, role):
     frames = []
     pca = PCA(n_components=2)
-    pca.fit(stats_stacked['genotypes'][role][0])
+    ic(np.vstack((stats_stacked['genotypes'][role][0], stats_stacked['optimal_genotype'][role][0])))
+    pca.fit(np.vstack((stats_stacked['genotypes'][role][0], stats_stacked['optimal_genotype'][role][0])))
     for gen in range(len(stats_stacked['generation'][role])):
         genotypes = np.array(stats_stacked['genotypes'][role][gen])
         optimal_genotype = np.array(stats_stacked['optimal_genotype'][role][gen])
@@ -91,6 +92,12 @@ def build_figure(frames, role, animation_speed):
                             'label': 'Pause',
                             'method': 'animate',
                             'args': [[None], {'frame': {'duration': 0, 'redraw': False}, 'transition': {'duration': 0}}]
+                        },
+                        {
+                            'label': 'Reset',
+                            'method': 'animate',
+                            'args': [[initial_frame], {'frame': {'duration': 0, 'redraw': True},
+                                                      'transition': {'duration': 0}}]
                         }
                     ],
                     'direction': 'left',
@@ -146,7 +153,7 @@ def main():
     animation_speed_predator = st.slider('Animation Speed for Predator (ms per frame)', min_value=0, max_value=2000,
                                          value=800, step=100)
     animation_bool = st.checkbox('Show animation')
-    if st.button('Run simulation'):
+    if st.button('Run Simulation'):
         st.session_state['run_simulation'] = True
     if 'run_simulation' in st.session_state and st.session_state['run_simulation']:
         try:
@@ -170,7 +177,7 @@ def main():
             sizes = [stats_stacked['size'][role] for role in ['prey', 'predator']]
             roles = {0: 'Prey', 1: 'Predator'}
             plot_population_sizes(sizes, roles)
-            
+            st.session_state['run_simulation'] = False
             frames_prey = create_frames(stats_stacked, 'prey') if animation_bool else None
             frames_predator = create_frames(stats_stacked, 'predator') if animation_bool else None
             if animation_bool:
@@ -185,6 +192,7 @@ def main():
                     st.header('Predator Population')
                     fig_predator = build_figure(frames_predator, 'Predator', animation_speed_predator)
                     st.plotly_chart(fig_predator, use_container_width=True)
+                  # Reset the flag after running the simulation
         
         except Exception as e:
             st.error(f"Failed to run simulation: {str(e)}")
