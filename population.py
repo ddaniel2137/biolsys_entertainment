@@ -20,20 +20,23 @@ class Population:
         self.mutation_effect = mutation_effect
         self.max_num_children = max_num_children
         self.fitnesses = np.exp(-np.linalg.norm(self.genotypes - self.optimal_genotype, axis=1) / (2 * self.fitness_coefficient ** 2))
+        self.prev_mean_fitness = 0.0
         self.mean_fitness = float(np.mean(self.fitnesses))
         self.interaction_value = interaction_value
         
         
     
-    def evaluate(self, mean_fitness_other: float):
+    def evaluate(self, mean_fitness_other: float, size_other: int):
+        prev_mean_fitness = self.mean_fitness
         if self.genotypes.shape[0] > 0:
             distances = np.linalg.norm(self.genotypes - self.optimal_genotype, axis=1)
-            fitnesses = np.exp(-distances / (2 * self.fitness_coefficient ** 2)) + self.interaction_value * mean_fitness_other / max(self.size, 1)
+            fitnesses = np.exp(-distances / (2 * self.fitness_coefficient ** 2)) \
+                        + self.interaction_value * mean_fitness_other * np.size_other / (self.size + size_other)
             mean_fitness = np.mean(fitnesses)
         else:
             fitnesses = np.array([])
             mean_fitness = 0.0
-        return fitnesses, mean_fitness
+        return fitnesses, mean_fitness, prev_mean_fitness
     
     def mutate(self):
         mask = np.random.uniform(0, 1, self.size * self.num_genes) < self.mutation_probability

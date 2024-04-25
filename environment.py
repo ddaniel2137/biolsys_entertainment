@@ -50,9 +50,10 @@ class Environment():
                 
              
     def evaluate(self):
-        other_mean_fitnesses = [p.mean_fitness for p in self.populations[-1::-1]]
+        other_mean_fitnesses = [p.prev_mean_fitness for p in self.populations[-1::-1]]
+        size_other = self.populations[-1].size
         for i, p in enumerate(self.populations):
-            p.fitnesses, p.mean_fitness = p.evaluate(other_mean_fitnesses[i])
+            p.fitnesses, p.mean_fitness, p.prev_mean_fitness = p.evaluate(other_mean_fitnesses[i], size_other)
         
     def mutate(self):
         for i, _ in enumerate(self.populations):

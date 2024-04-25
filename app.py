@@ -7,6 +7,7 @@ from icecream import ic
 from sklearn.decomposition import PCA
 import plotly.graph_objs as go
 from plotly.graph_objs import Figure, Layout, Frame, Scatter
+import plotly.express as px
 
 # Helper function to create frames for the animation
 def create_frames(stats_stacked, role):
@@ -62,14 +63,11 @@ def pad_sizes(sizes: List[np.ndarray], max_size: int) -> List[np.ndarray]:
 def plot_population_sizes(sizes: List[int], roles: Dict[int, str]) -> None:
     max_size = max([len(size) for size in sizes])
     padded_sizes = pad_sizes(sizes, max_size)
-    fig, ax = plt.subplots()
+    fig = go.Figure()
     for i, size in enumerate(padded_sizes):
-        ax.plot(size, label=roles[i])
-    ax.set_xlabel('Generation')
-    ax.set_ylabel('Population size')
-    ax.legend()
-    st.pyplot(fig)
-
+        fig.add_trace(go.Scatter(x=list(range(max_size)), y=size, mode='lines', name=roles[i]))
+    fig.update_layout(title='Population Sizes', xaxis_title='Generation', yaxis_title='Size')
+    st.plotly_chart(fig)
 
 def build_figure(frames, role, animation_speed):
     if frames:
