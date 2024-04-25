@@ -31,7 +31,7 @@ class Population:
         if self.genotypes.shape[0] > 0:
             distances = np.linalg.norm(self.genotypes - self.optimal_genotype, axis=1)
             fitnesses = np.exp(-distances / (2 * self.fitness_coefficient ** 2)) \
-                        + self.interaction_value * mean_fitness_other * np.size_other / (self.size + size_other)
+                        + self.interaction_value * mean_fitness_other * size_other / (self.size + size_other)
             mean_fitness = np.mean(fitnesses)
         else:
             fitnesses = np.array([])
