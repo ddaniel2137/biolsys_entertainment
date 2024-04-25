@@ -26,9 +26,13 @@ class Population:
         
     
     def evaluate(self, mean_fitness_other: float):
-        distances = np.linalg.norm(self.genotypes - self.optimal_genotype, axis=1)
-        fitnesses = np.exp(-distances / (2 * self.fitness_coefficient ** 2)) + self.interaction_value * mean_fitness_other / max(self.size, 1)
-        mean_fitness = np.mean(fitnesses)
+        if self.genotypes.shape[0] > 0:
+            distances = np.linalg.norm(self.genotypes - self.optimal_genotype, axis=1)
+            fitnesses = np.exp(-distances / (2 * self.fitness_coefficient ** 2)) + self.interaction_value * mean_fitness_other / max(self.size, 1)
+            mean_fitness = np.mean(fitnesses)
+        else:
+            fitnesses = np.array([])
+            mean_fitness = 0.0
         return fitnesses, mean_fitness
     
     def mutate(self):
@@ -59,4 +63,4 @@ class Population:
     
     def select(self):
         #ic(np.where(np.random.rand(self.size) < self.fitnesses))
-        return np.where(np.random.rand(self.size) < self.fitnesses)[0]
+        return np.where(np.random.rand(self.size) < (1 - self.size / self.max_population) * self.fitnesses)[0]
