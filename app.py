@@ -92,6 +92,12 @@ def build_figure(frames, role, animation_speed):
                             'method': 'animate',
                             'args': [[None], {'frame': {'duration': 0, 'redraw': False},
                                               'mode': 'immediate', 'transition': {'duration': 0}}]
+                        },
+                        {
+                            'label': 'Reset',
+                            'method': 'animate',
+                            'args': [{'frame': {'duration': 0, 'redraw': True}},
+                                     {'mode': 'immediate', 'transition': {'duration': 0}}],
                         }
                     ],
                     'direction': 'right',
