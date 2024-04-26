@@ -2,12 +2,11 @@ import numpy as np
 import streamlit as st
 from environment import Environment
 from typing import List, Dict
-import matplotlib.pyplot as plt
 from icecream import ic
 from sklearn.decomposition import PCA
 import plotly.graph_objs as go
 from plotly.graph_objs import Figure, Layout, Frame, Scatter
-import plotly.express as px
+
 
 # Helper function to create frames for the animation
 def create_frames(stats_stacked, role):
@@ -76,13 +75,6 @@ def build_figure(frames, role, animation_speed):
             data=initial_frame.data,
             layout=Layout(
                 autosize=True,
-                margin=dict(
-                    l=50,  # left margin
-                    r=50,  # right margin
-                    b=100,  # bottom margin
-                    t=50,  # top margin
-                    pad=10
-                ),
                 xaxis=dict(range=[-1, 1], autorange=False, zeroline=True, showgrid=False),
                 yaxis=dict(range=[-1, 1], autorange=False, zeroline=True, showgrid=False),
                 title=f"{role.capitalize()} Population Genotypes Evolution",
@@ -107,11 +99,11 @@ def build_figure(frames, role, animation_speed):
                                                       'transition': {'duration': 0}}]
                         }
                     ],
-                    'direction': 'left',
-                    'x': 0,
+                    'direction': 'right',
+                    'x': 1,
                     'xanchor': 'right',
-                    'y': 0,
-                    'yanchor': 'top'
+                    'y': -0.3,
+                    'yanchor': 'bottom'
                 }]
             ),
             frames=frames
