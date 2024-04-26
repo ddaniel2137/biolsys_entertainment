@@ -85,18 +85,13 @@ def build_figure(frames, role, animation_speed):
                             'label': 'Play',
                             'method': 'animate',
                             'args': [None, {'frame': {'duration': animation_speed, 'redraw': True},
-                                            'transition': {'duration': 0}}]
+                                            'fromcurrent': True, 'transition': {'duration': 0}}]
                         },
                         {
                             'label': 'Pause',
                             'method': 'animate',
-                            'args': [[None], {'frame': {'duration': 0, 'redraw': False}, 'transition': {'duration': 0}}]
-                        },
-                        {
-                            'label': 'Reset',
-                            'method': 'animate',
-                            'args': [[initial_frame], {'frame': {'duration': 0, 'redraw': True},
-                                                      'transition': {'duration': 0}}]
+                            'args': [[None], {'frame': {'duration': 0, 'redraw': False},
+                                              'mode': 'immediate', 'transition': {'duration': 0}}]
                         }
                     ],
                     'direction': 'right',
