@@ -14,10 +14,13 @@ class Environment():
                  mutation_effects: List[float], max_num_children: List[int], interaction_values: List[float], scenario: str,
                  meteor_impact_strategy: str,
                  num_generations: int, **kwargs):
+        
+        if kwargs.get("seed", None) is not None:
+            np.random.seed(kwargs.get("seed"))
 
         self.populations = [Population(init_populations[i], num_genes[i], optimal_genotypes[i], fitness_coefficients[i],
                                        max_populations[i], mutation_probabilities[i], mutation_effects[i],
-                                       max_num_children[i], interaction_values[i])
+                                       max_num_children[i], interaction_values[i], seed=kwargs.get("seed", None))
                             for i in range(len(init_populations))]
         self.scenario = scenario
         self. meteor_impact_strategy = meteor_impact_strategy

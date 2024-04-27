@@ -9,7 +9,9 @@ from scipy.spatial.distance import cdist
 class Population:
     def __init__(self, init_population: int, num_genes: int, optimal_genotype: np.ndarray,
                  fitness_coefficient: float, max_population: int, mutation_probability: float,
-                 mutation_effect: float, max_num_children: int, interaction_value: float):
+                 mutation_effect: float, max_num_children: int, interaction_value: float, **kwargs):
+        if kwargs.get("seed", None) is not None:
+            np.random.seed(kwargs.get("seed"))
         self.genotypes = np.random.uniform(-1, 1, (init_population, num_genes))
         self.num_genes = num_genes
         self.generation = 1
