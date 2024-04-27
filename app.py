@@ -9,6 +9,7 @@ import plotly.graph_objs as go
 from plotly.graph_objs import Figure, Layout, Frame, Scatter, Scattergl
 import plotly.express as px
 import pandas as pd
+import inspect
 
 
 @st.cache_data
@@ -140,38 +141,21 @@ def run_simulation(env, num_generations):
     return stats_stacked
 
 
-def run_simulations(env, num_generations, fitness_coefficients):
+def run_simulations(params, fitness_coefficients):
     results = []
     roles = ['prey', 'predator']
-    for prey_coef, predator_coef in fitness_coefficients:
-        env.populations[0].fitness_coefficient = prey_coef
-        env.populations[1].fitness_coefficient = predator_coef
-        
-        stats_stacked = run_simulation(env, num_generations)
-        df = preprocess_data(stats_stacked, roles)
-        results.append(df)
+    for p, q in fitness_coefficients:
+        params['fitness_coefficients'] = [p, q]
+        env = Environment(**params)
+        stats_stacked = run_simulation(env, params['num_generations'])
+        results.append(preprocess_data(stats_stacked, roles))
     return results
 
 
-def display_grid(results):
-    fig = px.line(pd.concat(results), x='generation', y='size', color='role',
-                  facet_col='prey_fitness', facet_row='predator_fitness',
-                  labels={'size': 'Population Size'})
-    
-    fig.update_yaxes(matches=None)
-    fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
-    fig.update_layout(height=800, title_text='Population Size by Fitness Coefficients')
-    
-    st.plotly_chart(fig)
-    
-    fig2 = px.histogram(pd.concat(results), x='genotypes', color='role',
-                        facet_col='prey_fitness', facet_row='predator_fitness',
-                        labels={'genotypes': 'Genotypes', 'count': 'Frequency'})
-    
-    fig2.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
-    fig2.update_layout(height=800, title_text='Genotype Distribution by Fitness Coefficients')
-    
-    st.plotly_chart(fig2)
+def display_grid(results, fitness_coefficients):
+    for df, (p, q) in zip(results, fitness_coefficients):
+        st.subheader(f'Fitness Coefficients: {p}, {q}')
+        st.dataframe(df)
 
 def setup_interface():
     st.title('Evolutionary Simulation')
@@ -191,21 +175,63 @@ def display_results(stats_stacked):
     plot_fitnesses(fitnesses, roles)
     
 def setup_sidebar_controls():
+    params = {
+        'roles': ['prey', 'predator'],
+        'num_populations': None,
+        'init_populations': None,
+        'num_genes': None,
+        'optimal_genotypes': None,
+        'fitness_coefficients': None,
+        'max_populations': None,
+        'mutation_probabilities': None,
+        'mutation_effects': None,
+        'max_num_children': None,
+        'interaction_values': None,
+        'num_generations': None,
+        'scenario': None,
+        'seed': None,
+        'meteor_impact_strategy': None,
+        'global_warming_scale': None,
+        'global_warming_var': None,
+        'meteor_impact_every': None,
+        'meteor_impact_at': None
+    }
     roles = ['prey', 'predator']
-    seed = st.sidebar.number_input('Seed', 0, 1000, 42)
-    num_populations = st.sidebar.slider('Number of populations', 1, 10, 2)
-    init_populations = [st.sidebar.slider(f'Initial population {rol}', 1, 1000, 30*(3*(2-i))) for i, rol in enumerate(roles)]
-    num_genes = [st.sidebar.slider(f'Number of genes {rol}', 1, 10, 3) for i, rol in enumerate(roles)]
-    optimal_genotypes = [np.zeros(num_genes[i]) for i, _ in enumerate(roles)]
-    fitness_coefficients = [st.sidebar.slider(f'Fitness coefficient {i}', 0.1, 10.0, 0.75) for i, rol in enumerate(roles)]
-    max_populations = [st.sidebar.slider(f'Max population {rol}', 100, 100000, 1000) for i, rol in enumerate(roles)]
-    mutation_probabilities = [st.sidebar.slider(f'Mutation probability {rol}', 0.0, 1.0, 0.2) for i, rol in enumerate(roles)]
-    mutation_effects = [st.sidebar.slider(f'Mutation effect {rol}', 0.0, 1.0, 0.1) for i, rol in enumerate(roles)]
-    max_num_children = [st.sidebar.slider(f'Max children {rol}', 1, 10, 2*(2-i)) for i, rol in enumerate(roles)]
-    interaction_values = [st.sidebar.slider(f'Interaction value {role}', i-1.0, float(i), (-1)**(i+1)*0.4*(i+1)) for i, role in enumerate(roles)]
-    num_generations = st.sidebar.slider('Number of generations', 1, 1000, 150)
-    scenario = st.sidebar.selectbox('Scenario', ['global_warming', 'None'])
-    return roles, num_populations, init_populations, num_genes, optimal_genotypes, fitness_coefficients, max_populations, mutation_probabilities, mutation_effects, max_num_children, interaction_values, num_generations, scenario, seed
+    params['seed'] = st.sidebar.number_input('Seed', 0, 1000, 42)
+    params['num_populations'] = st.sidebar.slider('Number of populations', 1, 10, 2)
+    params['init_populations'] = [st.sidebar.slider(f'Initial population {rol}', 1, 1000, 30*(3*(2-i))) for i, rol in enumerate(roles)]
+    params['num_genes'] = [st.sidebar.slider(f'Number of genes {rol}', 1, 10, 3) for i, rol in enumerate(roles)]
+    params['optimal_genotypes'] = [np.zeros(params['num_genes'][i]) for i, _ in enumerate(roles)]
+    params['fitness_coefficients'] = [st.sidebar.slider(f'Fitness coefficient {i}', 0.1, 10.0, 0.75) for i, rol in enumerate(roles)]
+    params['max_populations'] = [st.sidebar.slider(f'Max population {rol}', 100, 100000, 1000) for i, rol in enumerate(roles)]
+    params['mutation_probabilities'] = [st.sidebar.slider(f'Mutation probability {rol}', 0.0, 1.0, 0.2) for i, rol in enumerate(roles)]
+    params['mutation_effects'] = [st.sidebar.slider(f'Mutation effect {rol}', 0.0, 1.0, 0.1) for i, rol in enumerate(roles)]
+    params['max_num_children'] = [st.sidebar.slider(f'Max children {rol}', 1, 10, 2*(2-i)) for i, rol in enumerate(roles)]
+    params['interaction_values'] = [st.sidebar.slider(f'Interaction value {role}', i-1.0, float(i), (-1)**(i+1)*0.4*(i+1)) for i, role in enumerate(roles)]
+    params['num_generations'] = st.sidebar.slider('Number of generations', 1, 1000, 150)
+    params['scenario'] = st.sidebar.selectbox('Scenario', ['global_warming', 'None'])
+    params['meteor_impact_strategy'] = st.sidebar.selectbox('Meteor impact strategy', ['every', 'at', 'None'])
+    if params['scenario'] == 'global_warming':
+        params['global_warming_scale'] = st.sidebar.slider('Global warming scale', 0.0, 1.0, 0.01)
+        params['global_warming_var'] = st.sidebar.slider('Global warming variance', 0.0, 1.0, 0.1)
+    else:
+        params['global_warming_scale'] = None
+        params['global_warming_var'] = None
+        
+    if params['meteor_impact_strategy'] == 'every':
+        params['meteor_impact_every'] = st.sidebar.slider('Meteor impact every', 1, 100, 20)
+        params['meteor_impact_at'] = None
+    elif params['meteor_impact_strategy'] == 'at':
+        params['meteor_impact_at'] = st.sidebar.multiselect('Meteor impact at', list(range(1, params['num_generations'])), [20, 40])
+        params['meteor_impact_every'] = None
+    else:
+        params['meteor_impact_every'] = None
+        params['meteor_impact_at'] = None
+
+    for key, value in params.items():
+        st.session_state[key] = value
+    
+    return params
 
 import pandas as pd
 import numpy as np
@@ -232,29 +258,13 @@ def preprocess_data(stats_stacked, roles):
 
 def main():
     setup_interface()
-    roles, num_populations, init_populations, num_genes, optimal_genotypes, fitness_coefficients, max_populations, mutation_probabilities, mutation_effects, max_num_children, interaction_values, num_generations, scenario, seed = setup_sidebar_controls()
-
-    np.random.seed(seed)
-    if scenario == 'global_warming':
-        global_warming_scale = st.sidebar.slider('Global warming scale', 0.0, 1.0, 1.0)
-        global_warming_var = st.sidebar.slider('Global warming var', 0.0, 1.0, 0.1)
-    else:
-        global_warming_scale = None
-        global_warming_var = None
-
-    meteor_impact_strategy = st.sidebar.selectbox('Meteor impact strategy', ['every', 'at', 'None'])
-    if meteor_impact_strategy == 'every':
-        meteor_impact_every = st.sidebar.slider('Meteor impact every', 1, 100, 20)
-        meteor_impact_at = None
-    elif meteor_impact_strategy == 'at':
-        meteor_impact_at = st.sidebar.multiselect('Meteor impact at', list(range(1, num_generations)), [20, 40])
-        meteor_impact_every = None
-    else:
-        meteor_impact_every = None
-        meteor_impact_at = None
-
-    animation_speed_prey = st.sidebar.slider('Animation Speed for Prey (ms per frame)', min_value=0, max_value=2000, value=800, step=100)
-    animation_speed_predator = st.sidebar.slider('Animation Speed for Predator (ms per frame)', min_value=0, max_value=2000, value=800, step=100)
+    params = setup_sidebar_controls()
+    params_required = list(inspect.signature(Environment.__init__).parameters.keys())[1:-1]
+    params_required.extend(
+        ['seed', 'meteor_impact_strategy', 'global_warming_scale', 'global_warming_var', 'meteor_impact_every',
+         'meteor_impact_at'])
+    params_provided = {k: st.session_state[k] for k in params_required}
+    np.random.seed(st.session_state['seed'])
     animation_bool = st.checkbox('Show animation')
 
     if st.button('Run Simulation'):
@@ -262,17 +272,11 @@ def main():
 
     if 'run_simulation' in st.session_state and st.session_state['run_simulation']:
         try:
-            env = Environment(
-                init_populations, num_genes, optimal_genotypes, fitness_coefficients, max_populations,
-                mutation_probabilities, mutation_effects, max_num_children, interaction_values, scenario, meteor_impact_strategy,
-                num_generations, global_warming_scale=global_warming_scale, global_warming_var=global_warming_var,
-                meteor_impact_every=meteor_impact_every, meteor_impact_at=meteor_impact_at, seed=seed
-            )
-
-            stats_stacked = run_simulation(env, num_generations)
+            env = Environment(**params_provided)
+            stats_stacked = run_simulation(env, st.session_state['num_generations'])
             # Assuming stats_stacked is structured as: { 'stat_name': [values_over_time], ... }
             # Direct conversion to DataFrame
-            df = preprocess_data(stats_stacked, roles)
+            df = preprocess_data(stats_stacked, params['roles'])
             #df_new = expand_variable_length_columns(df, 'element')
             ic(df['genotypes'])
             #df.drop(columns=[('genotypes', 'prey'), ('genotypes', 'predator'), ('fitnesses', 'prey'), ('fitnesses', 'predator')], inplace=True)
@@ -288,6 +292,10 @@ def main():
             st.session_state['run_simulation'] = False
 
             if animation_bool:
+                animation_speed_prey = st.sidebar.slider('Animation Speed for Prey (ms per frame)', min_value=0,
+                                                         max_value=2000, value=800, step=100)
+                animation_speed_predator = st.sidebar.slider('Animation Speed for Predator (ms per frame)', min_value=0,
+                                                             max_value=2000, value=800, step=100)
                 with st.container():
                     frames_prey = create_frames(stats_stacked, 'prey')
                     frames_predator = create_frames(stats_stacked, 'predator')
@@ -302,15 +310,6 @@ def main():
                         st.header('Predator Population')
                         fig_predator = build_figure(frames_predator, 'Predator', animation_speed_predator)
                         st.plotly_chart(fig_predator, use_container_width=True)
-                        
-            tab1, tab2, tab3 = st.tabs(['Prey', 'Predator', 'Both'])
-            with tab1:
-                data_df = pd.DataFrame(stats_stacked)
-                
-            with tab2:
-                st.write('Predator')
-            with tab3:
-                st.write('Both')
 
         except Exception as e:
             st.error(f"Failed to run simulation: {str(e)}")
@@ -329,20 +328,12 @@ def main():
         
             
             fitness_coefficients = [(p, q) for p in prey_fitness_range for q in predator_fitness_range]
-            fitness_coefficients_dummy = [0.1, 0.1]
-            env = Environment(
-                init_populations, num_genes, optimal_genotypes, fitness_coefficients_dummy, max_populations,
-                mutation_probabilities, mutation_effects, max_num_children, interaction_values, scenario, meteor_impact_strategy,
-                num_generations, global_warming_scale=global_warming_scale, global_warming_var=global_warming_var,
-                meteor_impact_every=meteor_impact_every, meteor_impact_at=meteor_impact_at, seed=seed
-            )
-            results = run_simulations(env, num_generations, fitness_coefficients)
-            
+            results = run_simulations(params_provided, fitness_coefficients)
             for df, (p, q) in zip(results, fitness_coefficients):
                 df['prey_fitness'] = p
                 df['predator_fitness'] = q
             
-            display_grid(results)
+            display_grid(results, fitness_coefficients)
             st.session_state['run_simulations'] = False
 
 
