@@ -3,9 +3,10 @@ import streamlit as st
 from environment import Environment
 from typing import List, Dict
 from icecream import ic
-from sklearn.decomposition import PCA
+from sklearn.decomposition import PCA, TruncatedSVD
+from sklearn.preprocessing import MinMaxScaler
 import plotly.graph_objs as go
-from plotly.graph_objs import Figure, Layout, Frame, Scatter
+from plotly.graph_objs import Figure, Layout, Frame, Scatter, Scattergl
 
 
 # Helper function to create frames for the animation
@@ -13,43 +14,47 @@ def create_frames(stats_stacked, role):
     frames = []
     all_genotypes = np.vstack([g for g in stats_stacked['genotypes'][role] if g.size > 0])
     all_optimal_genotypes = np.vstack(stats_stacked['optimal_genotype'][role])
-
-    pca = PCA(n_components=2)
-    pca.fit(np.vstack((all_genotypes, all_optimal_genotypes)))
-
+    lengths = np.cumsum([0, *[g.shape[0] for g in stats_stacked['genotypes'][role]]])
+    pca = TruncatedSVD(n_components=2)
+    scaler = MinMaxScaler(feature_range=(-1, 1))
+    all_genotypes_scaled = scaler.fit_transform(pca.fit_transform(np.vstack([all_genotypes, all_optimal_genotypes])))
+    all_genotypes_scaled, all_optimal_genotypes_scaled = np.split(all_genotypes_scaled, [len(all_genotypes)])
+    ic(all_genotypes_scaled)
+    ic(all_optimal_genotypes_scaled)
     for gen in range(len(stats_stacked['generation'][role])):
-        genotypes = np.array(stats_stacked['genotypes'][role][gen])
-        optimal_genotype = np.array(stats_stacked['optimal_genotype'][role][gen])
-        pca_optimal = pca.transform(optimal_genotype.reshape(1, -1))
-
-        ic(genotypes.size, optimal_genotype)
-        if genotypes.size > 0:
-            pca_population = pca.transform(genotypes)
+        pca_population = all_genotypes_scaled[lengths[gen]:lengths[gen + 1]]
+        ic(pca_population, pca_population.shape)
+        pca_optimal = all_optimal_genotypes_scaled[gen, :].reshape(1, -1)
+        ic(pca_optimal, pca_optimal.shape)
+        if pca_population.size > 0:
             frame_data = [
                 Scatter(x=pca_population[:, 0], y=pca_population[:, 1], mode='markers', name='Population',
-                        marker={'color': 'blue'}),
+                        marker={'color': stats_stacked['fitnesses'][role][gen], 'size': 8, 'colorscale': 'Inferno',
+                                'cmin': 0.0, 'cmid': 0.5, 'cmax': 1.0, 'opacity': 0.5,# 'Viridis
+                                'colorbar': {'title': 'Fitness'}}),
                 Scatter(x=[pca_optimal[0, 0]], y=[pca_optimal[0, 1]], mode='markers', name='Optimal',
-                        marker={'color': 'red', 'size': 12})
+                        marker={'color': 'green', 'size': 12, 'symbol': 'cross'})
             ]
         else:
-            # Differentiate the plotting for optimal only scenario
             frame_data = [
                 Scatter(x=[pca_optimal[0, 0]], y=[pca_optimal[0, 1]], mode='markers', name='Optimal (only)',
-                        marker={'color': 'orange', 'size': 12, 'symbol': 'star'})
+                        marker={'color': 'red', 'size': 12, 'symbol': 'star'})
             ]
-
+            
         frame = Frame(
             data=frame_data,
             layout=Layout(title=f"{role.capitalize()} population genotypes evolution", annotations=[{
-                'text': f"Generation {gen} (optimal only)", 'showarrow': False, 'xref': 'paper', 'yref': 'paper', 'x': 0.5, 'y': 0.95,
+                'text': f"Generation {gen} (optimal only)", 'showarrow': False, 'xref': 'paper', 'yref': 'paper',
+                'x': 0.5, 'y': 0.95,
                 'xanchor': 'center', 'yanchor': 'bottom', 'font': {'size': 16}
-            }] if genotypes.size == 0 else [{
-                'text': f"Generation {gen}", 'showarrow': False, 'xref': 'paper', 'yref': 'paper', 'x': 0.5, 'y': 0.95,
+            }] if pca_population.size == 0 else [{
+                'text': f"Generation {gen}", 'showarrow': False, 'xref': 'paper', 'yref': 'paper', 'x': 0.5,
+                'y': 0.95,
                 'xanchor': 'center', 'yanchor': 'bottom', 'font': {'size': 16}
             }])
         )
         frames.append(frame)
-
+        
     return frames
 
 
@@ -68,6 +73,15 @@ def plot_population_sizes(sizes: List[int], roles: Dict[int, str]) -> None:
     fig.update_layout(title='Population Sizes', xaxis_title='Generation', yaxis_title='Size')
     st.plotly_chart(fig)
 
+def plot_fitnesses(fitnesses: List[np.ndarray], roles: Dict[int, str]) -> None:
+    max_size = max([len(fitness) for fitness in fitnesses])
+    padded_fitnesses = pad_sizes(fitnesses, max_size)
+    fig = go.Figure()
+    for i, fitness in enumerate(padded_fitnesses):
+        fig.add_trace(go.Scattergl(x=list(range(max_size)), y=fitness, mode='lines', name=roles[i]))
+    fig.update_layout(title='Fitnesses', xaxis_title='Generation', yaxis_title='Fitness')
+    st.plotly_chart(fig)
+    
 def build_figure(frames, role, animation_speed):
     if frames:
         initial_frame = frames[0]
@@ -121,16 +135,16 @@ def main():
         'The population evolves through mutation and reproduction, with genotypes evolving towards a target through simulated genetic processes.')
     roles = ['prey', 'predator']
     num_populations = st.slider('Number of populations', 1, 10, 2)
-    init_populations = [st.slider(f'Initial population {i}', 1, 1000, 30) for i in roles]
-    num_genes = [st.slider(f'Number of genes {i}', 1, 10, 2) for i in roles]
+    init_populations = [st.slider(f'Initial population {rol}', 1, 1000, 30*(3*(2-i))) for i, rol in enumerate(roles)]
+    num_genes = [st.slider(f'Number of genes {rol}', 1, 10, 4) for i, rol in enumerate(roles)]
     optimal_genotypes = [np.zeros(num_genes[i]) for i, _ in enumerate(roles)]
-    fitness_coefficients = [st.slider(f'Fitness coefficient {i}', 0.1, 10.0, 1.0) for i in roles]
-    max_populations = [st.slider(f'Max population {i}', 100, 10000, 1000) for i in roles]
-    mutation_probabilities = [st.slider(f'Mutation probability {i}', 0.0, 1.0, 0.5) for i in roles]
-    mutation_effects = [st.slider(f'Mutation effect {i}', 0.0, 1.0, 0.1) for i in roles]
-    max_num_children = [st.slider(f'Max children {i}', 1, 5, 2) for i in roles]
-    interaction_values = [st.slider(f'Interaction value {role}', i-1.0, float(i), 0.0) for i, role in enumerate(roles)]
-    num_generations = st.slider('Number of generations', 1, 1000, 1000)
+    fitness_coefficients = [st.slider(f'Fitness coefficient {i}', 0.1, 10.0, 0.75) for i, rol in enumerate(roles)]
+    max_populations = [st.slider(f'Max population {rol}', 100, 100000, 1000) for i, rol in enumerate(roles)]
+    mutation_probabilities = [st.slider(f'Mutation probability {rol}', 0.0, 1.0, 0.5) for i, rol in enumerate(roles)]
+    mutation_effects = [st.slider(f'Mutation effect {rol}', 0.0, 1.0, 0.1) for i, rol in enumerate(roles)]
+    max_num_children = [st.slider(f'Max children {rol}', 1, 10, 3*(2-i)) for i, rol in enumerate(roles)]
+    interaction_values = [st.slider(f'Interaction value {role}', i-1.0, float(i), (-1)**(i+1)*0.2) for i, role in enumerate(roles)]
+    num_generations = st.slider('Number of generations', 1, 1000, 10)
     scenario = st.selectbox('Scenario', ['global_warming', 'None'])
     if scenario == 'global_warming':
         global_warming_scale = st.slider('Global warming scale', 0.0, 1.0, 1.0)
@@ -177,6 +191,13 @@ def main():
             sizes = [stats_stacked['size'][role] for role in ['prey', 'predator']]
             roles = {0: 'Prey', 1: 'Predator'}
             plot_population_sizes(sizes, roles)
+            
+            st.subheader('Fitnesses')
+            fitnesses = [stats_stacked['mean_fitness'][role] for role in ['prey', 'predator']]
+            roles = {0: 'Prey', 1: 'Predator'}
+            plot_fitnesses(fitnesses, roles)
+            
+            
             st.session_state['run_simulation'] = False
             frames_prey = create_frames(stats_stacked, 'prey') if animation_bool else None
             frames_predator = create_frames(stats_stacked, 'predator') if animation_bool else None

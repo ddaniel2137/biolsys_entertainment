@@ -35,14 +35,14 @@ class Environment():
             case "every":
                 self.meteor_impact_every = kwargs.get("meteor_impact_every", 20)
                 self._execute_meteor = partial(
-                    self._change_optimal_genotypes, 1, 0.2,
+                    self._change_optimal_genotypes, 1, 1,
                     when=range(0, num_generations, self.meteor_impact_every),
                     distribution=np.random.normal
                 )
             case "at":
                 self.meteor_impact_at = kwargs.get("meteor_impact_at", [20, 40])
                 self._execute_meteor = partial(
-                    self._change_optimal_genotypes, 1, 0.2, when=self.meteor_impact_at,
+                    self._change_optimal_genotypes, 1, 1, when=self.meteor_impact_at,
                     distribution=np.random.normal
                 )
             case _:
@@ -50,10 +50,10 @@ class Environment():
                 
              
     def evaluate(self):
-        other_mean_fitnesses = [p.prev_mean_fitness for p in self.populations[-1::-1]]
-        size_other = self.populations[-1].size
+        other_mean_fitnesses = [p.mean_fitness for p in self.populations[-1::-1]]
+        size_other = [p.size for p in self.populations[-1::-1]]
         for i, p in enumerate(self.populations):
-            p.fitnesses, p.mean_fitness, p.prev_mean_fitness = p.evaluate(other_mean_fitnesses[i], size_other)
+            p.fitnesses, p.mean_fitness, p.prev_mean_fitness = p.evaluate(other_mean_fitnesses[i], size_other[i])
         
     def mutate(self):
         for i, _ in enumerate(self.populations):
@@ -61,9 +61,10 @@ class Environment():
     
     def reproduce(self):
         for i, _ in enumerate(self.populations):
-            new_genotypes, new_generation, new_size = self.populations[i].reproduce()
+            new_genotypes, new_generation, new_size, prev_size = self.populations[i].reproduce()
             self.populations[i].genotypes = new_genotypes
             self.populations[i].generation = new_generation
+            self.populations[i].prev_size = prev_size
             self.populations[i].size = new_size
     
     def run(self, num_generations: int):
@@ -75,6 +76,7 @@ class Environment():
                          'optimal_genotype': {'prey': [], 'predator': []}}
         
         for i in range(num_generations):
+            ic(i)
             stats = self.log_stats()
             for key in stats_stacked.keys():
                 for subkey in stats_stacked[key].keys():

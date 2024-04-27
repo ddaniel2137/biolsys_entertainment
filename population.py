@@ -1,8 +1,9 @@
 import numpy as np
 from typing import List, Callable
 from icecream import ic
-
+import copy
 import streamlit
+from scipy.spatial.distance import cdist
 
 
 class Population:
@@ -21,6 +22,7 @@ class Population:
         self.max_num_children = max_num_children
         self.fitnesses = np.exp(-np.linalg.norm(self.genotypes - self.optimal_genotype, axis=1) / (2 * self.fitness_coefficient ** 2))
         self.prev_mean_fitness = 0.0
+        self.prev_size = 0
         self.mean_fitness = float(np.mean(self.fitnesses))
         self.interaction_value = interaction_value
         
@@ -28,10 +30,15 @@ class Population:
     
     def evaluate(self, mean_fitness_other: float, size_other: int):
         prev_mean_fitness = self.mean_fitness
+        total_size = self.size + size_other
+        
         if self.genotypes.shape[0] > 0:
-            distances = np.linalg.norm(self.genotypes - self.optimal_genotype, axis=1)
-            fitnesses = np.exp(-distances / (2 * self.fitness_coefficient ** 2)) \
-                        + self.interaction_value * mean_fitness_other * size_other / (self.size + size_other)
+            distances = cdist(self.genotypes, self.optimal_genotype.reshape(1, -1), metric='euclidean').flatten()
+            genotypic_fitnesses = np.exp(-distances / (2 * self.fitness_coefficient ** 2))
+            freq_other = size_other / total_size
+            freq_self = self.size / total_size
+            interaction_fitnesses = mean_fitness_other * self.interaction_value * freq_other / freq_self
+            fitnesses = np.clip(genotypic_fitnesses + interaction_fitnesses, 0, 1)
             mean_fitness = np.mean(fitnesses)
         else:
             fitnesses = np.array([])
@@ -62,8 +69,8 @@ class Population:
         new_generation = self.generation + 1
         new_size = new_genotypes.shape[0]
 
-        return new_genotypes, new_generation, new_size
+        return new_genotypes, new_generation, new_size, copy.copy(self.size)
     
     def select(self):
         #ic(np.where(np.random.rand(self.size) < self.fitnesses))
-        return np.where(np.random.rand(self.size) < (1 - self.size / self.max_population) * self.fitnesses)[0]
+        return np.where(np.random.rand(self.size) < np.exp(-self.size / self.max_population) * self.fitnesses)[0]
