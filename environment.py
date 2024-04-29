@@ -6,25 +6,39 @@ from icecream import ic
 from functools import partial
 import copy
 
+import numpy as np
+from typing import List
+from population import Population
+import math
+from functools import partial
+import copy
 
-class Environment():
+
+class Environment:
     
     def __init__(self, init_populations: List[int], num_genes: List[int], optimal_genotypes: List[np.ndarray],
                  fitness_coefficients: List[float], max_populations: List[int], mutation_probabilities: List[float],
-                 mutation_effects: List[float], max_num_children: List[int], interaction_values: List[float], scenario: str,
-                 meteor_impact_strategy: str,
-                 num_generations: int, **kwargs):
+                 mutation_effects: List[float], max_num_children: List[int], interaction_values: List[float],
+                 scenario: str,
+                 meteor_impact_strategy: str, num_generations: int, **kwargs):
         
         if kwargs.get("seed", None) is not None:
             np.random.seed(kwargs.get("seed"))
-
-        self.populations = [Population(init_populations[i], num_genes[i], optimal_genotypes[i], fitness_coefficients[i],
-                                       max_populations[i], mutation_probabilities[i], mutation_effects[i],
-                                       max_num_children[i], interaction_values[i], seed=kwargs.get("seed", None))
-                            for i in range(len(init_populations))]
+        
+        self.populations = [Population(init_population, num_gene, optimal_genotype, fitness_coefficient,
+                                       max_population, mutation_probability, mutation_effect, max_num_child,
+                                       interaction_value, seed=kwargs.get("seed", None))
+                            for init_population, num_gene, optimal_genotype, fitness_coefficient, max_population,
+                            mutation_probability, mutation_effect, max_num_child, interaction_value in zip(
+                init_populations, num_genes, optimal_genotypes, fitness_coefficients, max_populations,
+                mutation_probabilities, mutation_effects, max_num_children, interaction_values)]
         self.scenario = scenario
-        self. meteor_impact_strategy = meteor_impact_strategy
-        match scenario:
+        self.meteor_impact_strategy = meteor_impact_strategy
+        self._setup_scenario(num_generations, **kwargs)
+        self._setup_meteor_impact(num_generations, **kwargs)
+    
+    def _setup_scenario(self, num_generations, **kwargs):
+        match self.scenario:
             case "global_warming":
                 self.global_warming_scale = kwargs.get("global_warming_scale", 0.01)
                 self.global_warming_var = kwargs.get("global_warming_var", 0.1)
@@ -34,7 +48,9 @@ class Environment():
                 )
             case _:
                 self._execute_scenario = lambda current: None
-        match meteor_impact_strategy:
+    
+    def _setup_meteor_impact(self, num_generations, **kwargs):
+        match self.meteor_impact_strategy:
             case "every":
                 self.meteor_impact_every = kwargs.get("meteor_impact_every", 20)
                 self._execute_meteor = partial(
@@ -50,26 +66,20 @@ class Environment():
                 )
             case _:
                 self._execute_meteor = lambda current: None
-                
              
     def evaluate(self):
         other_mean_fitnesses = [p.mean_fitness for p in self.populations[-1::-1]]
         size_other = [p.size for p in self.populations[-1::-1]]
         for i, p in enumerate(self.populations):
-            p.fitnesses, p.mean_fitness, p.prev_mean_fitness = p.evaluate(other_mean_fitnesses[i], size_other[i])
+            self.populations[i].evaluate(other_mean_fitnesses[i], size_other[i])
         
     def mutate(self):
         for i, _ in enumerate(self.populations):
-            self.populations[i].genotypes = self.populations[i].mutate()
+            self.populations[i].mutate()
     
     def reproduce(self):
         for i, _ in enumerate(self.populations):
-            new_genotypes, new_generation, new_size, prev_size = self.populations[i].reproduce()
-            self.populations[i].genotypes = new_genotypes
-            self.populations[i].generation = new_generation
-            self.populations[i].prev_size = prev_size
-            self.populations[i].size = new_size
-    
+            self.populations[i].reproduce()
     def run(self, num_generations: int):
         stats_stacked = {'mean_fitness': {'prey': [], 'predator': []},
                          'size': {'prey': [], 'predator': []},
@@ -79,7 +89,7 @@ class Environment():
                          'optimal_genotype': {'prey': [], 'predator': []}}
         
         for i in range(num_generations):
-            ic(i)
+            #ic(i)
             stats = self.log_stats()
             for key in stats_stacked.keys():
                 for subkey in stats_stacked[key].keys():
