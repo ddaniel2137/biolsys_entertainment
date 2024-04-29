@@ -615,6 +615,7 @@ def search_optimal_parameters(
         num_genes: List[int] = [5, 5],
         init_populations: List[int] = [200, 200],
         max_num_children: List[int] = [2, 2],
+        max_populations: List[int] = [10000, 10000],
       **kwargs
     ):
     
@@ -667,7 +668,9 @@ def search_optimal_parameters(
         'optimal_genotype': optimal_genotype,
         'num_genes': num_genes,
         'init_populations': init_populations,
-        'max_num_children': max_num_children
+        'max_num_children': max_num_children,
+        'max_populations': max_populations,
+        'optimal_genotypes': [np.zeros(num_genes[i]) for i, _ in enumerate(roles)]
     }
     
     #### Extract tunable parameters from kwargs
