@@ -1,0 +1,171 @@
+\documentclass{article}
+\usepackage[top=1in, bottom=1in, left=1.25in, right=1.25in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{float}
+
+\title{Evolutionary Model \\
+    based on Fisher's Geometric Model}
+\author{Daniel Duda}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+The goal of this project was to create an evolutionary model based on Fisher's Geometric Model. Subsequently, we have
+performed a series of simulations to study the effects of mutation probability and effect on the adaptation of the population.
+Additionally, our specific aim was to 
+
+
+\section{Methodology}
+
+The model is
+
+\begin{itemize}
+    \item[\textbf{1.}] Individual:
+        \begin{itemize}
+            \item Each individual is represented by a numpy array of shape \verb|(n_traits,)| where \verb|n_traits|
+            is the number of genetic traits and each trait is a float number in the range $[-1, 1]$
+            \item The number of traits can be changed easily in the code using the \verb|n_traits| parameter
+            \item Using a numpy array instead of a list allows for vectorized operations and thus is much
+            more efficient computationally
+            \item There is no sex trait. The model assumes that all individuals are hermaphrodites, but only
+            one individual can reproduce in each generation
+        \end{itemize}
+    \item[\textbf{2.}] Population:
+        \begin{itemize}
+            \item Initially population is represented by a list of individuals of length \verb|init_size|
+            and each individual has a genetic traits randomly sampled from a uniform distribution 
+            in the range $[-1, 1]$ for each trait
+            \item The maximum size of population is defined by the \verb|max_size| parameter and 
+            when the population size reaches the maximum size, the individuals with the lowest fitness
+            values are removed from the population until the population size is equal to \verb|max_size|
+        \end{itemize}
+    \item[\textbf{3.}] Environmennt:
+        \begin{itemize}
+            \item Environment is not implemented explicitly, but is realised by the existence of the
+            optimal genotype (genetic traits) represented by numpy array of shape \verb|(n_traits,)| filled
+            with zeros at the beginning of the simulation 
+            \item During the simulation the optimal genotype is changed from generation to generation 
+            according to the formula: $\alpha(t)=\alpha(t-1)+c$ where $\alpha(t)$ is the optimal genotype
+            at generation $t$ and $c$ is a random numbers sampled from a uniform distribution in the range
+            $[0, \text{warm \textunderscore rate}]$ where \verb|warm_rate| is a parameter of the simulation. The optimal 
+            genotype is changed in this way to simulate global warming.
+            \item At each generation there is a $0.5\%$ chance that the optimal genotype will be random 
+            sampled from a uniform distribution in the range $[-1, 1]$ for each trait. This is done to
+            simulate the meteor impact.
+        \end{itemize}
+    \item[\textbf{4.}] Fitness:
+        \begin{itemize}
+            \item Fitness of each individual is calculated according to the formula:
+            $$
+            \phi_{\alpha}(o)=\exp \left(-\frac{\|o-\alpha\|}{2 \sigma^{2}}\right)
+            $$
+            where $\alpha$ is the optimal genotype, $o$ is the genotype of the individual and $\sigma$ is
+            a parameter that controls the natural selection mechanism. For $\sigma \rightarrow \infty$ the
+            selection mechanism fades away.
+            \item The fitness function is implemented as a vectorized function and it is applied to the 
+            entire population at once. This is much more efficient computationally.
+            \item The value of the fitness is between the range $[0, 1]$ and provides probability of 
+            survival of the individual in the next generation explicitly.
+        \end{itemize}
+    \item[\textbf{5.}] Mutation:
+        \begin{itemize}
+            \item Mutation is implemented using a custom function that mutates individuals' traits with a probability \verb|p_mut|
+            \item During the mutation process, for each individual, a random number is generated from a uniform distribution. If this random number is less than \verb|p_mut|, one of the individual's traits is mutated
+            \item The index of the trait to be mutated is chosen randomly, and the mutation value is sampled from a normal distribution with mean 0 and standard deviation \verb|mut_std|
+            \item The mutation value is then added to the selected trait, resulting in a new trait value for the individual
+            \item This process enables the exploration of the search space and introduces genetic diversity into the population
+        \end{itemize}
+
+    \item[\textbf{6.}] Parent selection:
+        \begin{itemize}
+            \item Parent selection is performed using a custom function that filters individuals based on their fitness values and a competition rate \verb|comp_rate|
+            \item For each individual, a random number is generated from a uniform distribution. If this random number is less than the product of $(1 - \verb|comp_rate|)$ and the individual's fitness value, the individual is selected as a parent
+            \item This selection method favors individuals with higher fitness values, but it also allows individuals with lower fitness values to have a chance of being selected as parents, promoting diversity in the population
+            \item The selected parents are then used to create offspring in the reproduction process
+        \end{itemize}
+    \item[\textbf{7.}] Reproduction:
+        \begin{itemize}
+            \item The parents are randomly paired up to create offspring; each pair of parents produces one child
+            \item For each pair of parents, the child is created by taking the element-wise average of the parent's genetic traits with a random scaling factor between 2 and 4
+        \end{itemize}
+
+\end{itemize}
+
+\section{Results}
+
+\begin{itemize}
+    \item \textbf{Optimal mutation probability and effect for adaptation:} \\
+    For the given \verb|_CONFIG| parameters:
+        \begin{itemize}
+            \item \texttt{init\_size}: 100
+            \item \texttt{max\_size}: 1000
+            \item \texttt{n\_generations}: 50
+            \item \texttt{n\_traits}: 3
+            \item \texttt{trait\_min}: -1
+            \item \texttt{trait\_max}: 1
+            \item \texttt{init\_opt\_gen}: \texttt{np.zeros(3)}
+            \item \texttt{sel\_std}: 0.95
+            \item \texttt{warm\_rate}: 0.01
+            \item \texttt{competition\_rate}: 0.1
+            \item \texttt{seed}: 2137
+        \end{itemize}
+
+    I run the simulation 5 times for \verb|p_mut| and \verb|mut_std|$\in$ \verb|numpy.linspace(0.1, 0.9, 10)|
+    and calculated the average survival rate for each combination of \verb|p_mut| and \verb|mut_std| by summing
+    the generations where there was at least one individual and dividing it by the number of simulation runs.
+    
+    
+    {\centering
+    This is the result:
+    \par}
+
+    \begin{figure}[h] % [h] for placement here, use [t] for top or [b] for bottom
+        \centering % Center the image
+        \includegraphics[width=0.5\textwidth]{mut.png} % Adjust the width, in this case, it's set to 50% of the text width
+        \caption{Optimal \texttt{p\_mut} and \texttt{mut\_std}} % Caption for the image
+        \label{fig:mut} % Label for referencing the image
+    \end{figure}
+
+    \newpage
+
+    \item \textbf{Visualization of evolution in time:} \\
+    For the given \verb|_CONFIG| parameters as befor but with \verb|p_mut| = 0.5 and \verb|mut_std| = 0.4
+    I run the simulation for 26 generations.
+    
+    {\centering
+    This is the result:
+    \par}
+
+    \begin{figure}[h] % [h] for placement here, use [t] for top or [b] for bottom
+        \centering % Center the image
+        \includegraphics[width=0.5\textwidth]{pca.png} % Adjust the width, in this case, it's set to 50% of the text width
+        \caption{Evolution of population using PCA for 2 components} % Caption for the image
+        \label{fig:pca} % Label for referencing the image
+    \end{figure}
+
+    \begin{figure}[h] % [h] for placement here, use [t] for top or [b] for bottom
+        \centering % Center the image
+        \includegraphics[width=0.5\textwidth]{size.png} % Adjust the width, in this case, it's set to 50% of the text width
+        \caption{Population size and average fitness over time} % Caption for the image
+        \label{fig:size} % Label for referencing the image
+    \end{figure}
+
+\end{itemize}
+
+\newpage
+
+\section{Conclusion}
+
+As seen in results section, my model is very unstable for a bigger number of generations. It may be due to 
+the fact that the after a certain number of generations the optimal traits can go out of the range
+of the traits of population. Also events like meteor impact can cause the extinction of the population sooner 
+or later. I think that the model can be improved by adding some kind of a mechanism that prevents the optimal 
+traits from going out of the range of the traits of the population.
+
+\end{document}
