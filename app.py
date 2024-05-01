@@ -1,6 +1,6 @@
 import numpy as np
 import streamlit as st
-from environment import Environment
+from environment import Environment, run_simulation
 from typing import List, Union
 import pandas as pd
 import inspect
@@ -9,8 +9,10 @@ import pygwalker as pyg
 import re
 import copy
 
-from simulation import run_simulation, run_simulations, search_optimal_parameters
 from visualization import create_frames, plot_population_sizes, plot_fitnesses, build_figure, plot_population_contour
+from utils import pad_sizes, preprocess_data
+from parallel import search_optimal_parameters_parallel
+
 
 
 def main():
@@ -211,12 +213,6 @@ def main():
             
             st.write('End of grid search results.')
 
-
-def pad_sizes(sizes: List[np.ndarray], max_size: int) -> List[np.ndarray]:
-    padded_sizes = [np.pad(size, (0, max_size - len(size))) for size in sizes]
-    return padded_sizes
-
-
 def setup_interface():
     st.set_page_config(
         page_title="Population Simulation",
@@ -374,31 +370,6 @@ def setup_sidebar_controls():
         st.session_state[key] = value
     
     return params
-
-
-def preprocess_data(stats_stacked, roles):
-    """Preprocess nested data into a flat structure suitable for a DataFrame."""
-    data = []
-    for role in roles:
-        for gen in range(len(stats_stacked['generation'][role])):
-            entry = {
-                'role': role,
-                'generation': gen,
-                'mean_fitness': stats_stacked['mean_fitness'][role][gen],
-                'size': stats_stacked['size'][role][gen],
-                'optimal_genotype': stats_stacked['optimal_genotype'][role][gen],
-                # 
-                'genotypes': stats_stacked['genotypes'][role][gen].flatten(),
-                'fitnesses': stats_stacked['fitnesses'][role][gen].flatten()
-            }
-            #ic(entry['genotypes'])
-            #ic(entry['fitnesses'])
-            #ic(entry['optimal_genotype'])
-            #ic(entry['role'])
-            data.append(entry)
-    
-    return pd.DataFrame(data)
-
 
 # Refactored code
 def get_fitness_range(default_range, custom_range_input):

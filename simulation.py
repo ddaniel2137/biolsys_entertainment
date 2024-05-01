@@ -12,16 +12,9 @@ from environment import Environment
 
 
 def run_simulation(env, num_generations):
-    #progress_bar = st.progress(0)
-    #status_text = st.empty()
     
     for progress, stats_stacked in env.run(num_generations):
         continue
-        #progress_bar.progress(progress)
-        #status_text.text(f'Generation {int(progress * num_generations)}/{num_generations}')
-    
-    #progress_bar.empty()
-    # status_text.empty()
     
     return stats_stacked
 
@@ -110,7 +103,7 @@ def search_optimal_parameters(
             Default value is randomly drawn between the range using a dice button.
 
     """
-    #### Extract fixed parameters from kwargs
+
     fixed_params = {
         'roles': roles,
         'num_populations': num_populations,

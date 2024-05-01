@@ -5,13 +5,7 @@ import math
 from icecream import ic
 from functools import partial
 import copy
-
-import numpy as np
-from typing import List
-from population import Population
-import math
-from functools import partial
-import copy
+from itertools import islice
 
 
 class Environment:
@@ -124,4 +118,7 @@ class Environment:
                     #ic(distribution(0, var, p.num_genes))
                     p.optimal_genotype += scale * distribution(0, var, p.num_genes)
                     p.optimal_genotype = np.clip(p.optimal_genotype, -1, 1)
-                       
+
+def run_simulation(env: Environment, num_generations: int) -> tuple:
+    return next(islice(env.run(num_generations), num_generations - 1, None), None)
+
