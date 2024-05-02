@@ -7,7 +7,7 @@ from plotly.graph_objs import Scatter, Frame, Layout, Figure
 from sklearn.decomposition import TruncatedSVD
 from sklearn.preprocessing import MinMaxScaler
 
-from app import pad_sizes
+from utils import pad_sizes
 
 
 @st.cache_data
@@ -80,7 +80,7 @@ def plot_fitnesses(fitnesses: List[np.ndarray], roles: Dict[int, str]) -> None:
 
 
 @st.cache_data
-def build_figure(frames, role, animation_speed):
+def build_figure(frames: object, role: object, animation_speed: object) -> object:
     if frames:
         initial_frame = frames[0]
         fig = Figure(

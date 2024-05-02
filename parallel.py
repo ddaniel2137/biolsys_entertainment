@@ -7,9 +7,9 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import ParameterGrid
 from app import preprocess_data
-from typing import List
+from typing import List, Dict, Any
 
-def run_simulation_grid(params):
+def run_simulation_grid(Dict[str, Any] params):
     env = Environment(**params)
     stats_stacked = run_simulation(env, params['num_generations'])
     df = preprocess_data(stats_stacked, params['roles'])
