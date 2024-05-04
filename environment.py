@@ -18,16 +18,13 @@ class Environment:
         
         if kwargs.get("seed", None) is not None:
             np.random.seed(kwargs.get("seed"))
-        
-        self.populations = [Population(init_population, num_gene, optimal_genotype, fitness_coefficient,
-                                       max_population, mutation_probability, mutation_effect, max_num_child,
-                                       interaction_value, seed=kwargs.get("seed", None))
-                            for init_population, num_gene, optimal_genotype, fitness_coefficient, max_population,
-                            mutation_probability, mutation_effect, max_num_child, interaction_value in zip(
-                init_populations, num_genes, optimal_genotypes, fitness_coefficients, max_populations,
-                mutation_probabilities, mutation_effects, max_num_children, interaction_values)]
+        self.populations = [Population(init_populations[i], num_genes[i], optimal_genotypes[i], fitness_coefficients[i],
+                                       max_populations[i], mutation_probabilities[i], mutation_effects[i],
+                                       max_num_children[i], interaction_values[i], seed=kwargs.get("seed"))
+                            for i in range(len(init_populations))]
         self.scenario = scenario
         self.meteor_impact_strategy = meteor_impact_strategy
+        self.num_generations = num_generations
         self._setup_scenario(num_generations, **kwargs)
         self._setup_meteor_impact(num_generations, **kwargs)
     
@@ -60,13 +57,13 @@ class Environment:
                 )
             case _:
                 self._execute_meteor = lambda current: None
-             
+    
     def evaluate(self):
         other_mean_fitnesses = [p.mean_fitness for p in self.populations[-1::-1]]
         size_other = [p.size for p in self.populations[-1::-1]]
         for i, p in enumerate(self.populations):
             self.populations[i].evaluate(other_mean_fitnesses[i], size_other[i])
-        
+    
     def mutate(self):
         for i, _ in enumerate(self.populations):
             self.populations[i].mutate()
@@ -74,6 +71,8 @@ class Environment:
     def reproduce(self):
         for i, _ in enumerate(self.populations):
             self.populations[i].reproduce()
+
+#TODO: refactor to just one turn
     def run(self, num_generations: int):
         stats_stacked = {'mean_fitness': {'prey': [], 'predator': []},
                          'size': {'prey': [], 'predator': []},
@@ -96,15 +95,17 @@ class Environment:
             
             progress = (i + 1) / num_generations
             yield progress, stats_stacked
-        
+    
     def log_stats(self):
         populations_copy = copy.deepcopy(self.populations)
-        stats = {'mean_fitness': {'prey': populations_copy[0].mean_fitness, 'predator': populations_copy[1].mean_fitness},
-                 'size': {'prey': populations_copy[0].size, 'predator': populations_copy[1].size},
-                 'generation': {'prey': populations_copy[0].generation, 'predator': populations_copy[1].generation},
-                 'genotypes': {'prey': populations_copy[0].genotypes, 'predator': populations_copy[1].genotypes},
-                 'fitnesses': {'prey': populations_copy[0].fitnesses, 'predator': populations_copy[1].fitnesses},
-                 'optimal_genotype': {'prey': populations_copy[0].optimal_genotype, 'predator': populations_copy[1].optimal_genotype}}
+        stats = {
+            'mean_fitness': {'prey': populations_copy[0].mean_fitness, 'predator': populations_copy[1].mean_fitness},
+            'size': {'prey': populations_copy[0].size, 'predator': populations_copy[1].size},
+            'generation': {'prey': populations_copy[0].generation, 'predator': populations_copy[1].generation},
+            'genotypes': {'prey': populations_copy[0].genotypes, 'predator': populations_copy[1].genotypes},
+            'fitnesses': {'prey': populations_copy[0].fitnesses, 'predator': populations_copy[1].fitnesses},
+            'optimal_genotype': {'prey': populations_copy[0].optimal_genotype,
+                                 'predator': populations_copy[1].optimal_genotype}}
         return stats
     
     def _change_optimal_genotypes(
@@ -119,6 +120,6 @@ class Environment:
                     p.optimal_genotype += scale * distribution(0, var, p.num_genes)
                     p.optimal_genotype = np.clip(p.optimal_genotype, -1, 1)
 
+
 def run_simulation(env: Environment, num_generations: int) -> tuple:
     return next(islice(env.run(num_generations), num_generations - 1, None), None)
-

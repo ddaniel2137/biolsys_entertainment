@@ -1,14 +1,16 @@
+import plotly.express as px
+from numpy.random import RandomState
 import numpy as np
 import streamlit as st
-from environment import Environment, run_simulation
 from typing import List, Union
 import pandas as pd
 import inspect
 import streamlit.components.v1 as stc
-import pygwalker as pyg
 import re
 import copy
+from stqdm import stqdm
 
+from environment import Environment, run_simulation
 from visualization import create_frames, plot_population_sizes, plot_fitnesses, build_figure, plot_population_contour
 from utils import pad_sizes, preprocess_data
 from parallel import search_optimal_parameters_parallel
@@ -23,28 +25,28 @@ def main():
         ['seed', 'meteor_impact_strategy', 'global_warming_scale', 'global_warming_var', 'meteor_impact_every',
          'meteor_impact_at'])
     params_provided = {k: st.session_state[k] for k in params_required}
-    np.random.seed(st.session_state['seed'])
+    rng = RandomState(st.session_state['seed'])
     
     col = st.columns((1.5, 4.5, 2), gap='medium')
     col0_placeholder = col[0].empty()
     col2_placeholder = col[2].empty()
     
-    with col0_placeholder():
+    with col0_placeholder:
         st.header('Prey parameters')
-        st.write(f"Number of genes: {params['num_genes'][0]}")
-        st.write(f"Fitness coefficients: {params['fitness_coefficients'][0]}")
-        st.write(f"Mutation probabilities: {params['mutation_probabilities'][0]}")
-        st.write(f"Mutation effects: {params['mutation_effects'][0]}")
-        st.write(f"Max number of children: {params['max_num_children'][0]}")
-        st.write(f"Interaction values: {params['interaction_values'][0]}")
-        st.write(f"Initial populations: {params['init_populations'][0]}")
+        st.markdown(f"Number of genes: {params['num_genes'][0]}")
+        st.markdown(f"Fitness coefficients: {params['fitness_coefficients'][0]}")
+        st.markdown(f"Mutation probabilities: {params['mutation_probabilities'][0]}")
+        st.markdown(f"Mutation effects: {params['mutation_effects'][0]}")
+        st.markdown(f"Max number of children: {params['max_num_children'][0]}")
+        st.markdown(f"Interaction values: {params['interaction_values'][0]}")
+        st.markdown(f"Initial populations: {params['init_populations'][0]}")
     
     with col[1]:
         
         st.header('Simulation')
         if st.button('🎲', key='dice_all'):
             st.session_state["random_all"] = True
-            st.experimental_rerun()
+            st.rerun()
         
         if "random_all" in st.session_state and st.session_state["random_all"]:
             st.session_state["random_all"] = False
@@ -55,7 +57,7 @@ def main():
         if 'run_simulation' in st.session_state and st.session_state['run_simulation']:
             try:
                 env = Environment(**params_provided)
-                stats_stacked = run_simulation(env, st.session_state['num_generations'])
+                _, stats_stacked = run_simulation(env, st.session_state['num_generations'])
                 stats_df = preprocess_data(stats_stacked, params['roles'])
                 # Assuming stats_stacked is structured as: { 'stat_name': [values_over_time], ... }
                 # Direct conversion to DataFrame
@@ -75,6 +77,12 @@ def main():
                 st.session_state['stats_stacked'] = stats_stacked
                 st.session_state['run_simulation'] = False
             
+            except ValueError as ve:
+                st.error(f"Failed to run simulation due to value error: {str(ve)}")
+                st.session_state['run_simulation'] = False
+            except KeyError as ke:
+                st.error(f"Failed to run simulation due to key error: {str(ke)}")
+                st.session_state['run_simulation'] = False
             except Exception as e:
                 st.error(f"Failed to run simulation: {str(e)}")
                 st.session_state['run_simulation'] = False
@@ -106,23 +114,15 @@ def main():
                         fig_predator = build_figure(frames_predator, 'Predator', animation_speed_predator)
                         st.plotly_chart(fig_predator, use_container_width=True)
     
-    with col2_placeholder():
+    with col2_placeholder:
         st.header('Predator parameters')
-        st.write(f"Number of genes: {params['num_genes'][1]}")
-        st.write(f"Fitness coefficients: {params['fitness_coefficients'][1]}")
-        st.write(f"Mutation probabilities: {params['mutation_probabilities'][1]}")
-        st.write(f"Mutation effects: {params['mutation_effects'][1]}")
-        st.write(f"Max number of children: {params['max_num_children'][1]}")
-        st.write(f"Interaction values: {params['interaction_values'][1]}")
-        st.write(f"Initial populations: {params['init_populations'][1]}")
-    
-    if st.button('Open pygwalker (app layout embedded)'):
-        st.session_state['show_analysis'] = True
-    
-    if 'show_analysis' in st.session_state and st.session_state['show_analysis']:
-        df = st.session_state['stats_df']
-        pyg_html = pyg.walk(df, return_html=True).to_html()
-        stc.html(pyg_html, height=1000, scrolling=True)
+        st.markdown(f"Number of genes: {params['num_genes'][1]}")
+        st.markdown(f"Fitness coefficients: {params['fitness_coefficients'][1]}")
+        st.markdown(f"Mutation probabilities: {params['mutation_probabilities'][1]}")
+        st.markdown(f"Mutation effects: {params['mutation_effects'][1]}")
+        st.markdown(f"Max number of children: {params['max_num_children'][1]}")
+        st.markdown(f"Interaction values: {params['interaction_values'][1]}")
+        st.markdown(f"Initial populations: {params['init_populations'][1]}")
     
     tabs_stats = st.tabs(['Fitness Coefficients', 'Grid Search'])
     
@@ -150,7 +150,7 @@ def main():
             fitness_coefficients = [(p, q) for p in prey_fitness_range for q in
                                     predator_fitness_range]
             try:
-                st.session_state['results_df'] = run_simulations(params_provided, fitness_coefficients)
+                st.session_state['results_df'] = run_simulation(params_provided, fitness_coefficients)
                 # ic(st.session_state['results_df'].index)
                 # ic(st.session_state['results_df'].columns)
                 # ic(st.session_state['results_df'].head())
@@ -159,20 +159,6 @@ def main():
                 st.error(f"Error running simulations: {e}")
             st.session_state['run_simulations'] = False
         
-        if 'results_df' in st.session_state:
-            if st.button('Display pygwalker (app layout embedded)'):
-                st.session_state['pygwalker_coefs'] = True
-        
-        if 'pygwalker_coefs' in st.session_state and st.session_state['pygwalker_coefs']:
-            results_df = st.session_state['results_df']
-            try:
-                pyg_html2 = pyg.walk(results_df, env='Streamlit').to_html()
-                stc.html(pyg_html2, height=1000, scrolling=True)
-            except Exception as e:
-                st.error(f"Error generating HTML: {e}")
-            
-            if st.button('Close pygwalker'):
-                st.session_state['pygwalker_coefs'] = False
         
         if st.button('Show visual analysis'):
             st.session_state['show_visual_analysis'] = True
@@ -206,7 +192,8 @@ def main():
             st.session_state['run_grid_search'] = True
         
         if 'run_grid_search' in st.session_state and st.session_state['run_grid_search']:
-            results_grid = search_optimal_parameters()
+            progress_bar = st.progress(0)
+            results_grid = search_optimal_parameters_parallel()
             results_grid.to_csv('results_grid.csv', index=False)
             st.write('Grid search complete!')
             st.session_state['grid_search_results'] = results_grid
